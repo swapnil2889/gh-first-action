@@ -1,0 +1,68 @@
+name: Manual Deploy Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - stg
+          - prd
+      branch:
+        description: 'Branch to deploy'
+        required: true
+        default: 'develop'
+        type: string
+
+jobs:
+  # This job runs only when the selected environment is prd.
+  # It targets the repository environment named "prd" so GitHub's
+  # environment protection (required reviewers) will pause this job until approved.
+  wait-for-approval:
+    if: ${{ github.event.inputs.environment == 'prd' }}
+    runs-on: ubuntu-latest
+    environment: prd
+    steps:
+      - name: Approval placeholder
+        run: echo "Waiting for approval to deploy to PRD..."
+
+  # Build & deploy for non-prd (dev/stg)
+  build-deploy-nonprd:
+    if: ${{ github.event.inputs.environment != 'prd' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+      - name: Build
+        run: |
+          echo "Building for ${{ github.event.inputs.environment }} from branch ${{ github.event.inputs.branch }}"
+          # Insert your real build commands here
+      - name: Deploy
+        run: |
+          echo "Deploying to ${{ github.event.inputs.environment }}"
+          # Insert your real deploy commands here
+
+  # Build & deploy for prd — runs only after wait-for-approval completes (i.e., after approval)
+  build-deploy-prd:
+    if: ${{ github.event.inputs.environment == 'prd' }}
+    needs: wait-for-approval
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+      - name: Build (PRD)
+        run: |
+          echo "Building for PRODUCTION from branch ${{ github.event.inputs.branch }}"
+          # Insert your production build commands here
+      - name: Deploy (PRD)
+        run: |
+          echo "Deploying to PRODUCTION"
+          # Insert your production deploy commands here
